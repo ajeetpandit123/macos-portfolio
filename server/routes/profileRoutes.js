@@ -16,37 +16,26 @@ router.get('/', async (req, res) => {
 router.get('/download-resume', async (req, res) => {
     try {
         const profile = await Profile.findOne();
-        if (!profile || !profile.resumeUrl) return res.status(404).json({ message: 'Resume not found' });
-        
-        const { cloudinary } = require('../config/cloudinary');
-        
-        // Extract public_id and resource_type from Cloudinary URL
-        const urlParts = profile.resumeUrl.split('/');
-        const uploadIndex = urlParts.indexOf('upload');
-        let publicIdWithExt = '';
-        let resourceType = 'image';
-
-        if (uploadIndex !== -1) {
-            if (urlParts.includes('raw')) resourceType = 'raw';
-            let startIndex = uploadIndex + 1;
-            if (urlParts[startIndex].startsWith('v')) startIndex++;
-            publicIdWithExt = urlParts.slice(startIndex).join('/');
+        if (!profile || !profile.resumeUrl) {
+            return res.status(404).json({ message: 'No resume uploaded yet.' });
         }
 
-        const publicId = publicIdWithExt.substring(0, publicIdWithExt.lastIndexOf('.')) || publicIdWithExt;
+        const axios = require('axios');
 
-        // Use the dedicated private_download_url for more robust signed downloads
-        const downloadUrl = cloudinary.utils.private_download_url(publicId, 'pdf', {
-            resource_type: resourceType,
-            attachment: true,
-            expires_at: Math.floor(Date.now() / 1000) + 3600 // 1 hour expiry
+        // Stream the file from Cloudinary directly to the client
+        const response = await axios({
+            method: 'GET',
+            url: profile.resumeUrl,
+            responseType: 'stream',
         });
 
-        console.log('🔗 Generated Private Download URL:', downloadUrl);
-        res.redirect(downloadUrl);
+        res.setHeader('Content-Disposition', 'attachment; filename="Ajeet_Resume.pdf"');
+        res.setHeader('Content-Type', 'application/pdf');
+
+        response.data.pipe(res);
     } catch (error) {
-        console.error('Download Proxy Error:', error);
-        res.status(500).json({ message: 'Failed to download resume' });
+        console.error('Download Proxy Error:', error.message);
+        res.status(500).json({ message: 'Failed to download resume: ' + error.message });
     }
 });
 
@@ -64,10 +53,10 @@ router.post('/', protect, upload.fields([{ name: 'profileImage', maxCount: 1 }, 
             if (req.files.resume) {
                 const newResume = req.files.resume[0];
                 
-                // VALIDATION: Check if new resume is same as old one
+                /* 
+                // TEMPORARILY DISABLED TO ALLOW FIXING PREVIEW TYPE
                 if (currentProfile && currentProfile.resumeUrl) {
                     try {
-                        // Extract public_id of old resume
                         const oldUrl = currentProfile.resumeUrl;
                         const oldParts = oldUrl.split('/');
                         const oldUploadIdx = oldParts.indexOf('upload');
@@ -81,24 +70,20 @@ router.post('/', protect, upload.fields([{ name: 'profileImage', maxCount: 1 }, 
                         }
                         const oldPublicId = oldIdWithExt.substring(0, oldIdWithExt.lastIndexOf('.')) || oldIdWithExt;
 
-                        // Fetch old resource to get its ETag (hash)
                         const oldResource = await cloudinary.api.resource(oldPublicId, { resource_type: oldResType });
-                        
-                        // CloudinaryStorage provides the 'etag' in the multer file object for some versions, 
-                        // but if not, we can fetch the new resource info.
-                        const newResource = await cloudinary.api.resource(newResume.filename, { resource_type: newResume.resource_type || 'raw' });
+                        const newResource = await cloudinary.api.resource(newResume.filename, { resource_type: newResume.resource_type || 'image' });
 
-                        if (oldResource.etag === newResource.etag) {
-                            // Delete the duplicate upload
-                            await cloudinary.uploader.destroy(newResume.filename, { resource_type: newResume.resource_type || 'raw' });
+                        if (oldResource.etag === newResource.etag && oldResource.resource_type === newResource.resource_type) {
+                            await cloudinary.uploader.destroy(newResume.filename, { resource_type: newResume.resource_type || 'image' });
                             return res.status(400).json({ 
-                                message: 'The uploaded resume is identical to the one currently on file. No changes made.' 
+                                message: 'This exact resume (and file type) is already on file. No changes needed.' 
                             });
                         }
                     } catch (err) {
-                        console.log('Validation check skipped:', err.message);
+                        console.log('Duplicate check skipped:', err.message);
                     }
                 }
+                */
 
                 profileData.resumeUrl = newResume.path;
             }

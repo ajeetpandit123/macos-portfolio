@@ -19,9 +19,9 @@ const storage = new CloudinaryStorage({
         const isPDF = file.mimetype === 'application/pdf';
         return {
             folder: 'portfolio',
-            resource_type: isPDF ? 'raw' : 'image',
-            type: 'upload', // Ensure it's a public upload
-            access_mode: 'public', // Explicitly set to public
+            resource_type: 'image', // Force 'image' for everything to enable previews
+            type: 'upload',
+            access_mode: 'public',
         };
     },
 });

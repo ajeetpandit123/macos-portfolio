@@ -76,9 +76,10 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
   };
 
   const handleDownload = () => {
-    // Point to our new server-side proxy route for a guaranteed download
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5010/api';
-    window.location.href = `${API_URL}/profile/download-resume`;
+    // Use direct Cloudinary URL — same as "View Current Resume" in Admin which works perfectly
+    if (profile?.resumeUrl) {
+      window.open(profile.resumeUrl, '_blank');
+    }
   };
 
   const getComponent = (id) => {
@@ -90,36 +91,36 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
       case 'contact': return <Contact />;
       case 'admin':   return <Admin isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} onProfileUpdate={fetchProfile} />;
       case 'preview': 
-        const previewUrl = profile?.resumeUrl 
-          ? profile.resumeUrl.replace('/upload/', '/upload/w_800,f_auto,q_auto,pg_1/').replace('.pdf', '.jpg')
+        const resumeUrl = profile?.resumeUrl;
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5010/api';
+        // Use Google Docs Viewer for reliable cross-browser PDF preview
+        const googlePreviewUrl = resumeUrl 
+          ? `https://docs.google.com/viewer?url=${encodeURIComponent(resumeUrl)}&embedded=true`
           : null;
         
         return (
           <div className="h-full w-full flex flex-col bg-[#1e1e1e]">
             <div className="flex items-center justify-between p-3 border-b border-white/5">
-              <span className="text-xs text-white/50 font-medium">Ajeet_Resume_Preview.jpg</span>
+              <span className="text-xs text-white/50 font-medium">Ajeet_Resume.pdf</span>
               <button 
                 onClick={handleDownload} 
                 className="flex items-center gap-2 px-3 py-1 bg-mac-green/20 text-mac-green rounded text-[10px] hover:bg-mac-green/30 transition shadow-lg"
               >
-                <Download size={12} /> Download Full PDF
+                <Download size={12} /> Download PDF
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 flex justify-center bg-[#1a1a1a]">
-              {previewUrl ? (
-                <img 
-                  src={previewUrl} 
-                  alt="Resume Preview" 
-                  className="max-w-full h-auto shadow-2xl rounded border border-white/10"
-                  onError={(e) => {
-                    // If image conversion fails, just show the download link
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = '<div class="text-white/20 text-sm">Preview Unavailable. Please use the download button above.</div>';
-                  }}
+            <div className="flex-1 overflow-hidden bg-[#1a1a1a]">
+              {googlePreviewUrl ? (
+                <iframe
+                  src={googlePreviewUrl}
+                  title="Resume Preview"
+                  className="w-full h-full border-0"
+                  style={{ minHeight: '600px' }}
                 />
               ) : (
-                <div className="flex items-center justify-center text-white/20 text-sm uppercase tracking-widest">
-                  No Resume Uploaded
+                <div className="flex flex-col items-center justify-center h-full gap-4 text-white/20">
+                  <div className="text-sm uppercase tracking-widest">No Resume Uploaded</div>
+                  <div className="text-xs">Please upload a resume PDF from the Admin panel.</div>
                 </div>
               )}
             </div>
