@@ -9,8 +9,9 @@ import Contact from '../pages/Contact';
 import Admin from '../pages/Admin';
 import Login from '../pages/Login';
 import Home from '../pages/Home';
+import Profile from '../pages/Profile';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Share2, RotateCcw, ChevronLeft, ChevronRight, HardDrive, FileText, Download, X } from 'lucide-react';
+import { Share2, RotateCcw, ChevronLeft, ChevronRight, HardDrive, FileText, Download, X, User } from 'lucide-react';
 import axios from 'axios';
 
 const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
@@ -30,19 +31,21 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
     }
   }, [activeTab]);
 
-  const handleMinimize = () => {
-    setIsMinimized(true);
-  };
+  const handleMinimize = () => setIsMinimized(true);
+  const handleMaximize = () => setIsMaximized(prev => !prev);
+  const handleClose = () => { onTabChange('home'); setIsMaximized(false); setIsMinimized(false); };
 
-  const handleMaximize = () => {
-    setIsMaximized(!isMaximized);
-  };
-
-  const handleClose = () => {
-    onTabChange('home');
-    setIsMaximized(false);
-    setIsMinimized(false);
-  };
+  // Listen for custom events from MenuBar
+  useEffect(() => {
+    const onMinimize = () => handleMinimize();
+    const onMaximize = () => handleMaximize();
+    document.addEventListener('mac-minimize', onMinimize);
+    document.addEventListener('mac-maximize', onMaximize);
+    return () => {
+      document.removeEventListener('mac-minimize', onMinimize);
+      document.removeEventListener('mac-maximize', onMaximize);
+    };
+  }, []);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -89,6 +92,7 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
       case 'skills':  return <Skills />;
       case 'projects':return <Projects />;
       case 'contact': return <Contact />;
+      case 'profile': return <Profile isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} onProfileUpdate={fetchProfile} />;
       case 'admin':   return <Admin isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} onProfileUpdate={fetchProfile} />;
       case 'preview': 
         const resumeUrl = profile?.resumeUrl;
@@ -134,15 +138,16 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
   const getWindowTitle = (id) => {
     if (id === 'projects') return 'portfolio.dev/projects';
     if (id === 'preview') return 'Preview';
+    if (id === 'profile') return 'System Settings — Profile';
     return id.charAt(0).toUpperCase() + id.slice(1);
   };
 
   return (
     <div className="h-screen w-screen relative overflow-hidden select-none">
-      <MenuBar />
+      <MenuBar onTabChange={onTabChange} profile={profile} isLoggedIn={isLoggedIn} activeTab={activeTab} />
 
       {/* Desktop Icons */}
-      <div className="fixed top-14 right-6 flex flex-col gap-6 z-10">
+      <div className="fixed top-24 right-8 flex flex-col gap-8 z-10">
         <div className="desktop-icon" onClick={() => onTabChange('projects')}>
           <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20">
             <HardDrive size={28} className="text-white/80" />
@@ -189,12 +194,12 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
             exit={isMaximized ? { opacity: 0 } : { scale: 0.9, opacity: 0 }}
             className={`absolute cursor-default mac-window glass-morphism overflow-hidden flex flex-col shadow-2xl z-20 transition-all duration-300 ease-in-out
               ${isMaximized 
-                ? 'inset-0 top-8 w-full h-[calc(100vh-32px)] rounded-none border-none z-50' 
+                ? 'inset-0 top-20 w-full h-[calc(100vh-80px)] rounded-none border-none z-50' 
                 : isBrowserStyle(activeTab) 
-                  ? 'right-6 top-14 w-[700px] h-[580px]' 
+                  ? 'right-8 top-24 w-[700px] h-[580px]' 
                   : activeTab === 'preview' 
-                    ? 'left-1/2 top-[5%] -translate-x-1/2 w-[600px] h-[85vh]' 
-                    : 'left-1/2 top-[10%] -translate-x-1/2 w-[680px] max-h-[75vh]'}`}
+                    ? 'left-1/2 top-[12%] -translate-x-1/2 w-[600px] h-[80vh]' 
+                    : 'left-1/2 top-[10%] -translate-x-1/2 w-[680px] max-h-[85vh]'}`}
           >
             <div className="h-9 flex items-center px-4 bg-white/5 border-b border-white/5 shrink-0">
               <div className="flex gap-1.5">
