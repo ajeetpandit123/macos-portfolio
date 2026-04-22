@@ -23,7 +23,7 @@ const seed = async () => {
         if (!profileExists) {
             await Profile.create({
                 name: 'Antigravity Developer',
-                role: 'Full Stack AI Engineer',
+                role: 'Fullstack Engineer',
                 intro: 'Building the future with intelligent code and premium designs.',
                 about: 'I am a passionate developer with expertise in modern web technologies. I love creating beautiful user interfaces and robust backend systems.',
                 socialLinks: {

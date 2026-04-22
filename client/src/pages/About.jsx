@@ -21,7 +21,7 @@ const About = () => {
       <h2 className="text-3xl font-bold mb-6">About Me</h2>
       <div className="prose prose-invert">
         <p className="text-white/70 leading-relaxed mb-6 whitespace-pre-line">
-          {profile?.about || 'I’m a passionate Full Stack Developer who enjoys building scalable, user-friendly web applications from end to end. I work comfortably across both frontend and backend, turning ideas into complete, functional products..'}
+          {profile?.about || 'I’m a passionate Fullstack Engineer who enjoys building scalable, user-friendly web applications from end to end. I work comfortably across both frontend and backend, turning ideas into complete, functional products..'}
         </p>
       </div>
 
@@ -39,7 +39,7 @@ const About = () => {
           <h3 className="text-xl font-semibold mb-4">Experience</h3>
           <div className="space-y-4">
             <div className="border-l-2 border-mac-yellow pl-4">
-              <h4 className="font-medium text-mac-yellow">Full Stack Developer</h4>
+              <h4 className="font-medium text-mac-yellow">Fullstack Engineer</h4>
               <p className="text-sm text-white/50">Fine soft technology • may-2025 - jan-2026</p>
             </div>
           </div>

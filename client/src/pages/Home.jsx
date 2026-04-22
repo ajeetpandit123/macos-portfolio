@@ -40,7 +40,7 @@ const Home = () => {
         transition={{ delay: 0.2 }}
         className="text-xl text-white/70 mb-6"
       >
-        {profile?.role || 'Full Stack Developer'}
+        {profile?.role || 'Fullstack Engineer'}
       </motion.p>
       <motion.p
         initial={{ y: 20, opacity: 0 }}

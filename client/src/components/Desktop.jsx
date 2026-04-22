@@ -177,7 +177,7 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
               {profile?.name || 'Ajeet Kumar Pandit'}
             </h1>
             <p className="text-white/40 text-lg uppercase tracking-widest">
-              {profile?.role || 'Full Stack Developer'}
+              {profile?.role || 'Fullstack Engineer'}
             </p>
           </motion.div>
         )}

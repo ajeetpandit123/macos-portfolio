@@ -20,7 +20,7 @@ const Projects = () => {
   const displayProjects = projects.length > 0 ? projects : [
     {
       _id: '1',
-      title: 'CloudScale AI',
+      title: 'CloudScale Pro',
       image: '/cloud_dashboard_project.png',
       techStack: ['React', 'Python', 'AWS'],
       liveLink: '#'
