@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Wifi, Battery, Volume2, Search } from 'lucide-react';
+import { Wifi, Battery, Volume2, Search, Mail, MessageSquare } from 'lucide-react';
+import { Github, Linkedin } from './BrandIcons';
 
 const MenuBar = ({ onTabChange, profile, isLoggedIn, activeTab, onLogout }) => {
   const [date, setDate] = useState(new Date());
@@ -248,6 +249,26 @@ const MenuBar = ({ onTabChange, profile, isLoggedIn, activeTab, onLogout }) => {
 
       {/* Right side */}
       <div className="flex items-center gap-5 text-white/80">
+        {profile?.socialLinks?.github && (
+          <a href={profile.socialLinks.github} target="_blank" rel="noreferrer" title="GitHub">
+            <Github size={18} className="cursor-pointer hover:text-white transition-colors" />
+          </a>
+        )}
+        {profile?.socialLinks?.linkedin && (
+          <a href={profile.socialLinks.linkedin} target="_blank" rel="noreferrer" title="LinkedIn">
+            <Linkedin size={18} className="cursor-pointer hover:text-white transition-colors" />
+          </a>
+        )}
+        {profile?.socialLinks?.email && (
+          <a href={`mailto:${profile.socialLinks.email}`} title="Email">
+            <Mail size={18} className="cursor-pointer hover:text-white transition-colors" />
+          </a>
+        )}
+        {profile?.socialLinks?.whatsapp && (
+          <a href={`https://wa.me/${profile.socialLinks.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" title="WhatsApp">
+            <MessageSquare size={18} className="cursor-pointer hover:text-white transition-colors" />
+          </a>
+        )}
         <Volume2 size={18} className="cursor-pointer hover:text-white transition-colors" />
         <Wifi size={18} className="cursor-pointer hover:text-white transition-colors" />
         <Battery size={18} className="cursor-pointer hover:text-white transition-colors" />

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { Mail, MessageSquare } from 'lucide-react';
+import { Github, Linkedin } from '../components/BrandIcons';
 
 const Home = () => {
   const [profile, setProfile] = useState(null);
@@ -79,6 +81,34 @@ const Home = () => {
         <button className="px-6 py-2 glass rounded-lg font-medium hover:bg-white/10 transition-colors cursor-pointer">
           Let's Talk
         </button>
+      </motion.div>
+
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="flex gap-6 mt-12"
+      >
+        {profile?.socialLinks?.github && (
+          <a href={profile.socialLinks.github} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white transition-colors">
+            <Github size={24} />
+          </a>
+        )}
+        {profile?.socialLinks?.linkedin && (
+          <a href={profile.socialLinks.linkedin} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white transition-colors">
+            <Linkedin size={24} />
+          </a>
+        )}
+        {profile?.socialLinks?.email && (
+          <a href={`mailto:${profile.socialLinks.email}`} className="text-white/40 hover:text-white transition-colors">
+            <Mail size={24} />
+          </a>
+        )}
+        {profile?.socialLinks?.whatsapp && (
+          <a href={`https://wa.me/${profile.socialLinks.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white transition-colors">
+            <MessageSquare size={24} />
+          </a>
+        )}
       </motion.div>
     </div>
   );

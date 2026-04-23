@@ -8,32 +8,38 @@ const seed = async () => {
     try {
         await connectDB();
         
-        // Create Admin User
-        const adminExists = await User.findOne({ username: 'Ajeet' });
-        if (!adminExists) {
+        // Sync Admin User
+        const admin = await User.findOne({ username: 'Ajeet' });
+        if (!admin) {
             await User.create({
                 username: 'Ajeet',
-                password: 'Ajeet@1902' // Updated credentials
+                password: 'Ajeet@1902'
             });
-            console.log('Admin user created successfully (Ajeet/Ajeet@1902)');
+            console.log('Admin user created (Ajeet/Ajeet@1902)');
+        } else {
+            admin.password = 'Ajeet@1902';
+            await admin.save();
+            console.log('Admin password synchronized (Ajeet/Ajeet@1902)');
         }
 
-        // Create Initial Profile
-        const profileExists = await Profile.findOne();
-        if (!profileExists) {
-            await Profile.create({
-                name: 'Antigravity Developer',
+        // Create or Update Profile
+        await Profile.findOneAndUpdate(
+            {}, 
+            {
+                name: 'Ajeet Kumar Pandit',
                 role: 'Fullstack Engineer',
                 intro: 'Building the future with intelligent code and premium designs.',
                 about: 'I am a passionate developer with expertise in modern web technologies. I love creating beautiful user interfaces and robust backend systems.',
                 socialLinks: {
-                    github: 'github.com',
-                    linkedin: 'linkedin.com',
-                    email: 'hello@example.com'
+                    github: 'https://github.com/ajeetpandit123',
+                    linkedin: 'https://www.linkedin.com/in/ajeet-kumar-pandit-45b265373/',
+                    whatsapp: '9546936532',
+                    email: 'kumarajeet19022004@gmail.com'
                 }
-            });
-            console.log('Initial profile created');
-        }
+            },
+            { upsert: true, new: true }
+        );
+        console.log('Profile synchronized');
 
         // Sync Skills (Replace existing to match user's new list)
         console.log('Syncing technical proficiencies...');

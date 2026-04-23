@@ -43,6 +43,9 @@ router.post('/', protect, upload.fields([{ name: 'profileImage', maxCount: 1 }, 
     try {
         const { cloudinary } = require('../config/cloudinary');
         const profileData = { ...req.body };
+        if (typeof profileData.socialLinks === 'string') {
+            profileData.socialLinks = JSON.parse(profileData.socialLinks);
+        }
         const currentProfile = await Profile.findOne();
         
         if (req.files) {

@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Camera, Mail, User, Briefcase, FileText, Globe, ShieldCheck } from 'lucide-react';
+import { Camera, Mail, User, Briefcase, FileText, Globe, ShieldCheck, MessageSquare } from 'lucide-react';
 import Login from './Login';
 
 const Profile = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
   if (!isLoggedIn) return <Login onLogin={() => setIsLoggedIn(true)} />;
 
-  const [profile, setProfile] = useState({ name: '', role: '', about: '', intro: '' });
+  const [profile, setProfile] = useState({ 
+    name: '', 
+    role: '', 
+    about: '', 
+    intro: '',
+    socialLinks: { github: '', linkedin: '', whatsapp: '', email: '' }
+  });
   const [loading, setLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
 
@@ -19,7 +25,10 @@ const Profile = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
     try {
       const { data } = await axios.get('profile');
       if (data) {
-        setProfile(data);
+        setProfile({
+          ...data,
+          socialLinks: data.socialLinks || { github: '', linkedin: '', whatsapp: '', email: '' }
+        });
         setPreviewImage(data.profileImage);
       }
     } catch (err) {
@@ -47,6 +56,7 @@ const Profile = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
     formData.append('role', profile.role);
     formData.append('intro', profile.intro);
     formData.append('about', profile.about);
+    formData.append('socialLinks', JSON.stringify(profile.socialLinks));
     if (profile.newImage) formData.append('profileImage', profile.newImage);
     if (profile.newResume) formData.append('resume', profile.newResume);
 
@@ -125,6 +135,52 @@ const Profile = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
                   className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-10 pr-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-mac-green/50 transition-colors" 
                   value={profile.intro} 
                   onChange={(e) => setProfile({...profile, intro: e.target.value})} 
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[11px] font-semibold text-white/30 uppercase tracking-wider ml-1">Social Links</label>
+            <div className="space-y-3">
+              <div className="relative">
+                <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <input 
+                  type="text" 
+                  placeholder="GitHub URL" 
+                  className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-10 pr-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-mac-green/50 transition-colors" 
+                  value={profile.socialLinks?.github} 
+                  onChange={(e) => setProfile({...profile, socialLinks: {...profile.socialLinks, github: e.target.value}})} 
+                />
+              </div>
+              <div className="relative">
+                <Briefcase size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <input 
+                  type="text" 
+                  placeholder="LinkedIn URL" 
+                  className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-10 pr-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-mac-green/50 transition-colors" 
+                  value={profile.socialLinks?.linkedin} 
+                  onChange={(e) => setProfile({...profile, socialLinks: {...profile.socialLinks, linkedin: e.target.value}})} 
+                />
+              </div>
+              <div className="relative">
+                <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <input 
+                  type="email" 
+                  placeholder="Gmail Address" 
+                  className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-10 pr-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-mac-green/50 transition-colors" 
+                  value={profile.socialLinks?.email} 
+                  onChange={(e) => setProfile({...profile, socialLinks: {...profile.socialLinks, email: e.target.value}})} 
+                />
+              </div>
+              <div className="relative">
+                <MessageSquare size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                <input 
+                  type="text" 
+                  placeholder="WhatsApp Number (e.g. 919876543210)" 
+                  className="w-full bg-white/5 border border-white/10 rounded-lg py-2 pl-10 pr-3 text-sm text-white placeholder:text-white/20 outline-none focus:border-mac-green/50 transition-colors" 
+                  value={profile.socialLinks?.whatsapp} 
+                  onChange={(e) => setProfile({...profile, socialLinks: {...profile.socialLinks, whatsapp: e.target.value}})} 
                 />
               </div>
             </div>

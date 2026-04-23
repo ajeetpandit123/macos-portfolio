@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { Mail, MessageSquare } from 'lucide-react';
+import { Github, Linkedin } from '../components/BrandIcons';
 
 const About = () => {
   const [profile, setProfile] = useState(null);
@@ -44,6 +46,29 @@ const About = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mt-16 flex gap-6">
+        {profile?.socialLinks?.github && (
+          <a href={profile.socialLinks.github} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white transition-colors">
+            <Github size={20} />
+          </a>
+        )}
+        {profile?.socialLinks?.linkedin && (
+          <a href={profile.socialLinks.linkedin} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white transition-colors">
+            <Linkedin size={20} />
+          </a>
+        )}
+        {profile?.socialLinks?.email && (
+          <a href={`mailto:${profile.socialLinks.email}`} className="text-white/40 hover:text-white transition-colors">
+            <Mail size={20} />
+          </a>
+        )}
+        {profile?.socialLinks?.whatsapp && (
+          <a href={`https://wa.me/${profile.socialLinks.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-white/40 hover:text-white transition-colors">
+            <MessageSquare size={20} />
+          </a>
+        )}
       </div>
     </div>
   );
