@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Wifi, Battery, Volume2, Search } from 'lucide-react';
 
-const MenuBar = ({ onTabChange, onDownloadResume, profile, isLoggedIn, activeTab }) => {
+const MenuBar = ({ onTabChange, profile, isLoggedIn, activeTab, onLogout }) => {
   const [date, setDate] = useState(new Date());
   const [openMenu, setOpenMenu] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -31,8 +31,14 @@ const MenuBar = ({ onTabChange, onDownloadResume, profile, isLoggedIn, activeTab
     setOpenMenu(null);
     switch (action) {
       case 'download-resume':
+        // Trigger the download from the public folder or DB if available
         if (profile?.resumeUrl) window.open(profile.resumeUrl, '_blank');
-        else alert('No resume uploaded yet.');
+        else {
+          const link = document.createElement('a');
+          link.href = '/Resume.pdf';
+          link.download = 'Ajeet_Resume.pdf';
+          link.click();
+        }
         break;
       case 'download-portfolio':
         window.print();
@@ -81,12 +87,14 @@ const MenuBar = ({ onTabChange, onDownloadResume, profile, isLoggedIn, activeTab
       case 'nav-preview': onTabChange('preview'); break;
       case 'nav-profile': onTabChange('profile'); break;
       case 'logout':
-        localStorage.removeItem('token');
-        window.location.reload();
+        if (onLogout) onLogout();
+        else {
+           localStorage.removeItem('token');
+           window.location.reload();
+        }
         break;
       case 'minimize': document.dispatchEvent(new CustomEvent('mac-minimize')); break;
       case 'maximize': document.dispatchEvent(new CustomEvent('mac-maximize')); break;
-      case 'reset-zoom': setZoom(100); document.body.style.zoom = '100%'; break;
       default: break;
     }
   };
@@ -162,6 +170,13 @@ const MenuBar = ({ onTabChange, onDownloadResume, profile, isLoggedIn, activeTab
               {profile?.name ? profile.name.charAt(0).toUpperCase() : 'A'}
             </div>
           )}
+        </button>
+
+        <button
+          onClick={() => setOpenMenu(openMenu === 'apple' ? null : 'apple')}
+          className={`px-4 py-2 rounded-lg transition-colors font-bold ${openMenu === 'apple' ? 'bg-white/20' : 'hover:bg-white/10'}`}
+        >
+          
         </button>
 
         {Object.keys(menus).filter(m => m !== 'apple').map((menuName) => (

@@ -14,12 +14,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Share2, RotateCcw, ChevronLeft, ChevronRight, HardDrive, FileText, Download, X, User } from 'lucide-react';
 import axios from 'axios';
 
-const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
+const Desktop = ({ isLoggedIn, setIsLoggedIn, defaultTab = 'home', onLogout }) => {
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [profile, setProfile] = useState(null);
   const [resumeBlobUrl, setResumeBlobUrl] = useState(null);
 
   const [isMaximized, setIsMaximized] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+
+  // Sync internal state with defaultTab when it changes from outside
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
 
   // Reset states when tab changes
   useEffect(() => {
@@ -31,9 +37,17 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
     }
   }, [activeTab]);
 
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'home') {
+      setIsMaximized(false);
+      setIsMinimized(false);
+    }
+  };
+
   const handleMinimize = () => setIsMinimized(true);
   const handleMaximize = () => setIsMaximized(prev => !prev);
-  const handleClose = () => { onTabChange('home'); setIsMaximized(false); setIsMinimized(false); };
+  const handleClose = () => { handleTabChange('home'); setIsMaximized(false); setIsMinimized(false); };
 
   // Listen for custom events from MenuBar
   useEffect(() => {
@@ -62,7 +76,7 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
 
   const handleResumeClick = async () => {
     if (profile?.resumeUrl) {
-      onTabChange('preview');
+      handleTabChange('preview');
       if (!resumeBlobUrl) {
         try {
           const response = await fetch(profile.resumeUrl);
@@ -74,14 +88,20 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
         }
       }
     } else {
-      alert('Resume not uploaded yet! Please upload it via the Admin panel.');
+      // Fallback to public folder if no DB resume
+      handleTabChange('preview');
     }
   };
 
   const handleDownload = () => {
-    // Use direct Cloudinary URL — same as "View Current Resume" in Admin which works perfectly
     if (profile?.resumeUrl) {
       window.open(profile.resumeUrl, '_blank');
+    } else {
+      // Direct link to public folder asset
+      const link = document.createElement('a');
+      link.href = '/Resume.pdf';
+      link.download = 'Ajeet_Resume.pdf';
+      link.click();
     }
   };
 
@@ -95,12 +115,11 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
       case 'profile': return <Profile isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} onProfileUpdate={fetchProfile} />;
       case 'admin':   return <Admin isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} onProfileUpdate={fetchProfile} />;
       case 'preview': 
-        const resumeUrl = profile?.resumeUrl;
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5010/api';
+        const resumeUrl = profile?.resumeUrl || '/Resume.pdf';
         // Use Google Docs Viewer for reliable cross-browser PDF preview
-        const googlePreviewUrl = resumeUrl 
+        const googlePreviewUrl = resumeUrl.startsWith('http') 
           ? `https://docs.google.com/viewer?url=${encodeURIComponent(resumeUrl)}&embedded=true`
-          : null;
+          : resumeUrl; // Local paths might not work with Google Viewer on localhost
         
         return (
           <div className="h-full w-full flex flex-col bg-[#1e1e1e]">
@@ -114,7 +133,7 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
               </button>
             </div>
             <div className="flex-1 overflow-hidden bg-[#1a1a1a]">
-              {googlePreviewUrl ? (
+              {resumeUrl.startsWith('http') ? (
                 <iframe
                   src={googlePreviewUrl}
                   title="Resume Preview"
@@ -122,10 +141,12 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
                   style={{ minHeight: '600px' }}
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center h-full gap-4 text-white/20">
-                  <div className="text-sm uppercase tracking-widest">No Resume Uploaded</div>
-                  <div className="text-xs">Please upload a resume PDF from the Admin panel.</div>
-                </div>
+                <object data={resumeUrl} type="application/pdf" className="w-full h-full">
+                  <div className="flex flex-col items-center justify-center h-full gap-4 text-white/20">
+                     <p>It seems your browser doesn't support PDF embedding.</p>
+                     <button onClick={handleDownload} className="text-mac-green underline">Download instead</button>
+                  </div>
+                </object>
               )}
             </div>
           </div>
@@ -139,16 +160,17 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
     if (id === 'projects') return 'portfolio.dev/projects';
     if (id === 'preview') return 'Preview';
     if (id === 'profile') return 'System Settings — Profile';
+    if (id === 'admin') return 'Admin Terminal — Management';
     return id.charAt(0).toUpperCase() + id.slice(1);
   };
 
   return (
     <div className="h-screen w-screen relative overflow-hidden select-none">
-      <MenuBar onTabChange={onTabChange} profile={profile} isLoggedIn={isLoggedIn} activeTab={activeTab} />
+      <MenuBar onTabChange={handleTabChange} profile={profile} isLoggedIn={isLoggedIn} activeTab={activeTab} onLogout={onLogout} />
 
       {/* Desktop Icons */}
       <div className="fixed top-24 right-8 flex flex-col gap-8 z-10">
-        <div className="desktop-icon" onClick={() => onTabChange('projects')}>
+        <div className="desktop-icon" onClick={() => handleTabChange('projects')}>
           <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20">
             <HardDrive size={28} className="text-white/80" />
           </div>
@@ -223,7 +245,7 @@ const Desktop = ({ activeTab, onTabChange, isLoggedIn, setIsLoggedIn }) => {
         if (tab === activeTab && isMinimized) {
           setIsMinimized(false);
         } else {
-          onTabChange(tab);
+          handleTabChange(tab);
           if (isMinimized) setIsMinimized(false);
         }
       }} />

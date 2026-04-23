@@ -17,6 +17,20 @@ const Home = () => {
     fetchProfile();
   }, []);
 
+  const handleDownload = () => {
+    if (profile?.resumeUrl) {
+      // Use the backend proxy for reliable Cloudinary download
+      const downloadUrl = `${axios.defaults.baseURL}profile/download-resume`;
+      window.open(downloadUrl, '_blank');
+    } else {
+      // Fallback to public folder
+      const link = document.createElement('a');
+      link.href = '/Resume.pdf';
+      link.download = 'Ajeet_Resume.pdf';
+      link.click();
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center h-full text-center py-10">
       <motion.img
@@ -56,13 +70,12 @@ const Home = () => {
         transition={{ delay: 0.4 }}
         className="flex gap-4"
       >
-        <a
-          href={`${axios.defaults.baseURL}profile/download-resume`}
-          download="Resume.pdf"
+        <button
+          onClick={handleDownload}
           className="px-6 py-2 bg-white text-black rounded-lg font-medium hover:bg-white/90 transition-colors"
         >
           Download Resume
-        </a>
+        </button>
         <button className="px-6 py-2 glass rounded-lg font-medium hover:bg-white/10 transition-colors cursor-pointer">
           Let's Talk
         </button>

@@ -1,29 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Desktop from './components/Desktop';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
 import axios from 'axios';
 
 // Set base URL for axios
-axios.defaults.baseURL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/';
+axios.defaults.baseURL = (import.meta.env.VITE_API_URL || 'http://localhost:5010/api') + '/';
 
 function App() {
-  // Restore last active tab from localStorage, default to 'home'
-  const [activeTab, setActiveTab] = useState(() => {
-    return localStorage.getItem('activeTab') || 'home';
-  });
   const [isBooting, setIsBooting] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  // Persist active tab whenever it changes
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    if (tab) localStorage.setItem('activeTab', tab);
-  };
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      setIsLoggedIn(true);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
 
@@ -31,7 +23,15 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+  };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    delete axios.defaults.headers.common['Authorization'];
+    setIsLoggedIn(false);
+  };
 
   if (isBooting) {
     return (
@@ -49,15 +49,44 @@ function App() {
   }
 
   return (
-    <div className="h-screen w-screen relative">
-      <Toaster position="top-right" />
-      <Desktop 
-        activeTab={activeTab} 
-        onTabChange={handleTabChange} 
-        isLoggedIn={isLoggedIn}
-        setIsLoggedIn={setIsLoggedIn}
-      />
-    </div>
+    <Router>
+      <div className="h-screen w-screen relative">
+        <Toaster position="top-right" />
+        <Routes>
+          {/* Public Portfolio Route */}
+          <Route path="/" element={
+            <Desktop 
+              isLoggedIn={isLoggedIn} 
+              setIsLoggedIn={setIsLoggedIn} 
+              defaultTab="home"
+            />
+          } />
+
+          {/* Admin Login Route */}
+          <Route path="/admin" element={
+            isLoggedIn ? <Navigate to="/admin/dashboard" replace /> : 
+            <div className="h-screen w-screen bg-[#1e1e1e] flex items-center justify-center p-4">
+               <Login onLogin={handleLoginSuccess} />
+            </div>
+          } />
+
+          {/* Protected Admin Dashboard Route */}
+          <Route path="/admin/dashboard" element={
+            <ProtectedRoute isLoggedIn={isLoggedIn}>
+              <Desktop 
+                isLoggedIn={isLoggedIn} 
+                setIsLoggedIn={setIsLoggedIn} 
+                defaultTab="admin"
+                onLogout={handleLogout}
+              />
+            </ProtectedRoute>
+          } />
+
+          {/* Fallback to Home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
