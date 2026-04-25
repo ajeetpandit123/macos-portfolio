@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import Desktop from './components/Desktop';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import { supabase } from './lib/supabase';
 import axios from 'axios';
 
 // Set base URL for axios
@@ -11,14 +12,24 @@ axios.defaults.baseURL = (import.meta.env.VITE_API_URL || 'http://localhost:5010
 
 function App() {
   const [isBooting, setIsBooting] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('token'));
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+      
+      const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+        setIsLoggedIn(!!session);
+      });
 
+      return () => {
+        authListener?.subscription.unsubscribe();
+      };
+    };
+
+    checkSession();
+    
     const timer = setTimeout(() => setIsBooting(false), 2000);
     return () => clearTimeout(timer);
   }, []);
@@ -27,9 +38,8 @@ function App() {
     setIsLoggedIn(true);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setIsLoggedIn(false);
   };
 

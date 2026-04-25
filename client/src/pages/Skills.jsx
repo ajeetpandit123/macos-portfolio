@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 
@@ -8,10 +9,22 @@ const Skills = () => {
   useEffect(() => {
     const fetchSkills = async () => {
       try {
-        const { data } = await axios.get('skills');
-        setSkills(data);
+        const { data, error } = await supabase
+          .from('skills')
+          .select('*')
+          .order('name');
+        
+        if (error) throw error;
+        setSkills(data || []);
       } catch (err) {
-        console.error(err);
+        console.error('Error fetching skills from Supabase:', err);
+        // Fallback to axios
+        try {
+          const { data } = await axios.get('skills');
+          setSkills(data);
+        } catch (axiosErr) {
+          console.error('Fallback axios fetch also failed:', axiosErr);
+        }
       }
     };
     fetchSkills();

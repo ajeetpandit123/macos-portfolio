@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { 
@@ -17,12 +19,10 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
   const [profile, setProfile] = useState({ name: '', role: '', about: '', intro: '' });
   const [loading, setLoading] = useState(false);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     toast.success('Logged out successfully');
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
+    if (setIsLoggedIn) setIsLoggedIn(false);
   };
 
   // New Project State
@@ -38,42 +38,68 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
   const fetchData = async () => {
     try {
       if (activeSubTab === 'projects') {
-        const { data } = await axios.get('projects');
-        setProjects(data);
+        const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        setProjects(data || []);
       } else if (activeSubTab === 'skills') {
-        const { data } = await axios.get('skills');
-        setSkills(data);
+        const { data, error } = await supabase.from('skills').select('*').order('name');
+        if (error) throw error;
+        setSkills(data || []);
       } else if (activeSubTab === 'messages') {
-        const { data } = await axios.get('messages');
-        setMessages(data);
+        const { data, error } = await supabase.from('messages').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        setMessages(data || []);
       } else if (activeSubTab === 'profile') {
-        const { data } = await axios.get('profile');
+        const { data, error } = await supabase.from('profiles').select('*').single();
+        if (error) throw error;
         if (data) setProfile(data);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Fetch error:', err);
+      // Fallback to axios for existing data
+      try {
+        const { data } = await axios.get(activeSubTab);
+        if (activeSubTab === 'projects') setProjects(data);
+        else if (activeSubTab === 'skills') setSkills(data);
+        else if (activeSubTab === 'messages') setMessages(data);
+        else if (activeSubTab === 'profile' && data) setProfile(data);
+      } catch (axErr) {}
     }
   };
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const formData = new FormData();
-    formData.append('title', newProject.title);
-    formData.append('description', newProject.description);
-    formData.append('techStack', JSON.stringify(newProject.techStack.split(',').map(s => s.trim())));
-    formData.append('githubLink', newProject.githubLink);
-    formData.append('liveLink', newProject.liveLink);
-    if (newProject.image) formData.append('image', newProject.image);
-
     try {
-      await axios.post('projects', formData);
+      let imageUrl = '';
+      if (newProject.image) {
+        const fileExt = newProject.image.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('portfolio-assets')
+          .upload(`projects/${fileName}`, newProject.image);
+        
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('portfolio-assets').getPublicUrl(`projects/${fileName}`);
+        imageUrl = publicUrl;
+      }
+
+      const { error } = await supabase.from('projects').insert([{
+        title: newProject.title,
+        description: newProject.description,
+        tech_stack: newProject.techStack.split(',').map(s => s.trim()),
+        github_link: newProject.githubLink,
+        live_link: newProject.liveLink,
+        image: imageUrl || '/cloud_dashboard_project.png'
+      }]);
+
+      if (error) throw error;
       toast.success('Project created!');
       setNewProject({ title: '', description: '', techStack: '', githubLink: '', liveLink: '', image: null });
       fetchData();
     } catch (err) {
-      const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to create project';
-      toast.error('Server Error: ' + errorMsg);
+      console.error(err);
+      toast.error('Error: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -81,34 +107,54 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
 
   const handleDeleteProject = async (id) => {
     try {
-      await axios.delete(`projects/${id}`);
+      const { error } = await supabase.from('projects').delete().eq('id', id);
+      if (error) throw error;
       toast.success('Project deleted');
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete project');
+      toast.error(err.message || 'Failed to delete project');
     }
   };
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const formData = new FormData();
-    formData.append('name', profile.name);
-    formData.append('role', profile.role);
-    formData.append('intro', profile.intro);
-    formData.append('about', profile.about);
-    if (profile.newImage) formData.append('profileImage', profile.newImage);
-    if (profile.newResume) formData.append('resume', profile.newResume);
-
     try {
-      const { data } = await axios.post('profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setProfile(data);
-      if (onProfileUpdate) onProfileUpdate();
+      let updates = {
+        name: profile.name,
+        role: profile.role,
+        intro: profile.intro,
+        about: profile.about,
+      };
+
+      if (profile.newImage) {
+        const fileExt = profile.newImage.name.split('.').pop();
+        const fileName = `avatar-${Math.random()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('portfolio-assets')
+          .upload(`profile/${fileName}`, profile.newImage);
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('portfolio-assets').getPublicUrl(`profile/${fileName}`);
+        updates.profile_image = publicUrl;
+      }
+
+      if (profile.newResume) {
+        const { error: uploadError } = await supabase.storage
+          .from('portfolio-assets')
+          .upload(`resumes/Resume-${Date.now()}.pdf`, profile.newResume);
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from('portfolio-assets').getPublicUrl(`resumes/Resume-${Date.now()}.pdf`);
+        updates.resume_url = publicUrl;
+      }
+
+      const { error } = await supabase.from('profiles').update(updates).eq('id', profile.id || 1); // Assuming ID 1 or handled by RLS
+      if (error) throw error;
+      
       toast.success('Profile updated successfully!');
+      fetchData();
+      if (onProfileUpdate) onProfileUpdate();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update profile');
+      toast.error(err.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -118,12 +164,13 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post('skills', newSkill);
+      const { error } = await supabase.from('skills').insert([newSkill]);
+      if (error) throw error;
       toast.success('Skill added!');
       setNewSkill({ name: '', category: 'Frontend', proficiency: 90 });
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add skill');
+      toast.error(err.message || 'Failed to add skill');
     } finally {
       setLoading(false);
     }
@@ -131,11 +178,12 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
 
   const handleDeleteSkill = async (id) => {
     try {
-      await axios.delete(`skills/${id}`);
+      const { error } = await supabase.from('skills').delete().eq('id', id);
+      if (error) throw error;
       toast.success('Skill deleted');
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete skill');
+      toast.error(err.message || 'Failed to delete skill');
     }
   };
 
@@ -199,7 +247,7 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
             </form>
             <div className="space-y-4">
               {projects.map((project) => (
-                <div key={project._id} className="flex items-center justify-between glass p-4 rounded-xl">
+                <div key={project.id || project._id} className="flex items-center justify-between glass p-4 rounded-xl">
                   <div className="flex items-center gap-4">
                     <img src={project.image} alt="" className="w-12 h-12 rounded object-cover" />
                     <div>
@@ -207,7 +255,7 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
                       <p className="text-xs text-white/50">{project.techStack.join(', ')}</p>
                     </div>
                   </div>
-                  <button onClick={() => handleDeleteProject(project._id)} className="p-2 text-mac-red hover:bg-mac-red/10 rounded-lg transition-colors">
+                  <button onClick={() => handleDeleteProject(project.id || project._id)} className="p-2 text-mac-red hover:bg-mac-red/10 rounded-lg transition-colors">
                     <Trash size={18} />
                   </button>
                 </div>
@@ -297,7 +345,7 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {skills.map((skill) => (
-                <div key={skill._id} className="flex items-center justify-between glass p-4 rounded-xl border border-white/5">
+                <div key={skill.id || skill._id} className="flex items-center justify-between glass p-4 rounded-xl border border-white/5">
                   <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${
                       skill.category === 'Frontend' ? 'bg-[#27c93f]' : 
@@ -310,7 +358,7 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button onClick={() => handleDeleteSkill(skill._id)} className="p-2 text-mac-red hover:bg-mac-red/10 rounded-lg transition-colors">
+                    <button onClick={() => handleDeleteSkill(skill.id || skill._id)} className="p-2 text-mac-red hover:bg-mac-red/10 rounded-lg transition-colors">
                       <Trash size={16} />
                     </button>
                   </div>

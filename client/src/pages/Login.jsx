@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { Lock, User, ChevronLeft } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 
 const Login = ({ onLogin }) => {
-  const [formData, setFormData] = useState({ username: '', password: '' });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -13,14 +13,18 @@ const Login = ({ onLogin }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await axios.post('auth/login', formData);
-      localStorage.setItem('token', data.token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) throw error;
+
       toast.success('Login successful!');
       if (onLogin) onLogin();
       navigate('/admin/dashboard');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      toast.error(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -46,12 +50,12 @@ const Login = ({ onLogin }) => {
         <div className="relative group">
           <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-mac-green transition-colors" size={18} />
           <input
-            type="text"
-            placeholder="Username"
+            type="email"
+            placeholder="Email Address"
             required
             className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-4 rounded-2xl focus:border-mac-green/50 outline-none transition-all placeholder:text-white/20 text-white"
-            value={formData.username}
-            onChange={(e) => setFormData({...formData, username: e.target.value})}
+            value={formData.email}
+            onChange={(e) => setFormData({...formData, email: e.target.value})}
           />
         </div>
         <div className="relative group">

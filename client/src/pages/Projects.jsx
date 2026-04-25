@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+
 import axios from 'axios';
 import { ExternalLink, Code } from 'lucide-react';
 
@@ -8,10 +10,22 @@ const Projects = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const { data } = await axios.get('projects');
-        setProjects(data);
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        setProjects(data || []);
       } catch (err) {
-        console.error(err);
+        console.error('Error fetching projects from Supabase:', err);
+        // Fallback to axios
+        try {
+          const { data } = await axios.get('projects');
+          setProjects(data);
+        } catch (axiosErr) {
+          console.error('Fallback axios fetch also failed:', axiosErr);
+        }
       }
     };
     fetchProjects();
@@ -45,7 +59,7 @@ const Projects = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl mx-auto">
         {displayProjects.map((project) => (
-          <div key={project._id} className="group cursor-pointer">
+          <div key={project.id || project._id} className="group cursor-pointer">
             <div className="relative aspect-[16/10] rounded-3xl overflow-hidden bg-[#1a1a1a] border border-white/5 mb-6 group-hover:border-white/10 transition-all duration-300">
               <img 
                 src={project.image} 
@@ -75,7 +89,7 @@ const Projects = () => {
               </div>
               
               <div className="flex flex-wrap gap-x-3 gap-y-1">
-                {project.techStack.map((tech) => (
+                {(project.techStack || project.tech_stack || []).map((tech) => (
                   <span key={tech} className="text-[10px] font-bold tracking-widest uppercase text-white/30 group-hover:text-white/50 transition-colors">
                     {tech}
                   </span>

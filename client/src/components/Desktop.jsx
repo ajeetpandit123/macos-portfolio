@@ -12,7 +12,9 @@ import Home from '../pages/Home';
 import Profile from '../pages/Profile';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Share2, RotateCcw, ChevronLeft, ChevronRight, HardDrive, FileText, Download, X, User } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import axios from 'axios';
+
 
 const Desktop = ({ isLoggedIn, setIsLoggedIn, defaultTab = 'home', onLogout }) => {
   const [activeTab, setActiveTab] = useState(defaultTab);
@@ -63,10 +65,31 @@ const Desktop = ({ isLoggedIn, setIsLoggedIn, defaultTab = 'home', onLogout }) =
 
   const fetchProfile = useCallback(async () => {
     try {
-      const { data } = await axios.get('profile');
-      setProfile(data);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .single();
+      
+      if (error) throw error;
+      
+      // Normalize data (Supabase snake_case to UI camelCase)
+      const normalizedProfile = {
+        ...data,
+        profileImage: data.profile_image || data.profileImage,
+        resumeUrl: data.resume_url || data.resumeUrl,
+        socialLinks: data.social_links || data.socialLinks
+      };
+      
+      setProfile(normalizedProfile);
     } catch (err) {
-      console.error('Error fetching profile:', err);
+      console.error('Error fetching profile from Supabase:', err);
+      // Fallback to axios if Supabase fails (optional, but good for migration)
+      try {
+        const { data } = await axios.get('profile');
+        setProfile(data);
+      } catch (axiosErr) {
+        console.error('Fallback axios fetch also failed:', axiosErr);
+      }
     }
   }, []);
 

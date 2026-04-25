@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import axios from 'axios';
 import { Mail, MessageSquare } from 'lucide-react';
 import { Github, Linkedin } from '../components/BrandIcons';
@@ -9,10 +10,30 @@ const About = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const { data } = await axios.get('profile');
-        setProfile(data);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .single();
+        
+        if (error) throw error;
+        
+        const normalizedProfile = {
+          ...data,
+          profileImage: data.profile_image || data.profileImage,
+          resumeUrl: data.resume_url || data.resumeUrl,
+          socialLinks: data.social_links || data.socialLinks
+        };
+        
+        setProfile(normalizedProfile);
       } catch (err) {
-        console.error(err);
+        console.error('Error fetching profile from Supabase:', err);
+        // Fallback to axios
+        try {
+          const { data } = await axios.get('profile');
+          setProfile(data);
+        } catch (axiosErr) {
+          console.error('Fallback axios fetch also failed:', axiosErr);
+        }
       }
     };
     fetchProfile();
