@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { Send, Mail, MapPin, Phone } from 'lucide-react';
 
@@ -11,18 +11,14 @@ const Contact = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await axios.post('messages', formData);
+      const { error } = await supabase.from('messages').insert([formData]);
       
-      if (data.emailError) {
-        // Form submitted to DB, but email failed
-        toast.error(`Saved to DB, but email failed: ${data.emailError}`, { duration: 5000 });
-      } else {
-        // Fully successful
-        toast.success(data.message || 'Message sent successfully!');
-      }
+      if (error) throw error;
       
+      toast.success('Message sent successfully!');
       setFormData({ name: '', email: '', subject: '', message: '' });
     } catch (err) {
+      console.error(err);
       toast.error('Failed to send message.');
     } finally {
       setLoading(false);

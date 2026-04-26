@@ -71,35 +71,45 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      let imageUrl = '';
-      if (newProject.image) {
-        const fileExt = newProject.image.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('portfolio-assets')
-          .upload(`projects/${fileName}`, newProject.image);
-        
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage.from('portfolio-assets').getPublicUrl(`projects/${fileName}`);
-        imageUrl = publicUrl;
+      if (!newProject.image) {
+        toast.error('Please select an image');
+        setLoading(false);
+        return;
       }
 
-      const { error } = await supabase.from('projects').insert([{
-        title: newProject.title,
-        description: newProject.description,
-        tech_stack: newProject.techStack.split(',').map(s => s.trim()),
-        github_link: newProject.githubLink,
-        live_link: newProject.liveLink,
-        image: imageUrl || '/cloud_dashboard_project.png'
-      }]);
+      const formData = new FormData();
+      formData.append('title', newProject.title);
+      formData.append('description', newProject.description);
+      formData.append('techStack', JSON.stringify(newProject.techStack.split(',').map(s => s.trim())));
+      formData.append('githubLink', newProject.githubLink);
+      formData.append('liveLink', newProject.liveLink);
+      formData.append('image', newProject.image);
 
-      if (error) throw error;
-      toast.success('Project created!');
+      // Use the Node backend (already running on port 5010)
+      const { data } = await axios.post('projects', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      // Optional: Sync with Supabase
+      try {
+        await supabase.from('projects').insert([{
+          title: data.title,
+          description: data.description,
+          tech_stack: data.techStack,
+          github_link: data.githubLink,
+          live_link: data.liveLink,
+          image: data.image
+        }]);
+      } catch (supaErr) {
+        console.warn('Supabase project sync skipped:', supaErr.message);
+      }
+
+      toast.success('Project created successfully (using Cloudinary)!');
       setNewProject({ title: '', description: '', techStack: '', githubLink: '', liveLink: '', image: null });
       fetchData();
     } catch (err) {
       console.error(err);
-      toast.error('Error: ' + err.message);
+      toast.error(err.response?.data?.message || err.message || 'Failed to create project');
     } finally {
       setLoading(false);
     }
@@ -120,41 +130,48 @@ const Admin = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      let updates = {
-        name: profile.name,
-        role: profile.role,
-        intro: profile.intro,
-        about: profile.about,
-      };
+      const formData = new FormData();
+      formData.append('name', profile.name);
+      formData.append('role', profile.role);
+      formData.append('intro', profile.intro);
+      formData.append('about', profile.about);
+      formData.append('socialLinks', JSON.stringify(profile.socialLinks));
 
       if (profile.newImage) {
-        const fileExt = profile.newImage.name.split('.').pop();
-        const fileName = `avatar-${Math.random()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('portfolio-assets')
-          .upload(`profile/${fileName}`, profile.newImage);
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage.from('portfolio-assets').getPublicUrl(`profile/${fileName}`);
-        updates.profile_image = publicUrl;
+        formData.append('profileImage', profile.newImage);
       }
 
       if (profile.newResume) {
-        const { error: uploadError } = await supabase.storage
-          .from('portfolio-assets')
-          .upload(`resumes/Resume-${Date.now()}.pdf`, profile.newResume);
-        if (uploadError) throw uploadError;
-        const { data: { publicUrl } } = supabase.storage.from('portfolio-assets').getPublicUrl(`resumes/Resume-${Date.now()}.pdf`);
-        updates.resume_url = publicUrl;
+        formData.append('resume', profile.newResume);
       }
 
-      const { error } = await supabase.from('profiles').update(updates).eq('id', profile.id || 1); // Assuming ID 1 or handled by RLS
-      if (error) throw error;
-      
-      toast.success('Profile updated successfully!');
+      // Use the Node backend (already running on port 5010)
+      const { data } = await axios.post('profile', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      // Optional: Sync with Supabase
+      try {
+        const updates = {
+          name: data.name,
+          role: data.role,
+          intro: data.intro,
+          about: data.about,
+          profile_image: data.profileImage,
+          resume_url: data.resumeUrl,
+          social_links: data.socialLinks
+        };
+        await supabase.from('profiles').update(updates).eq('id', profile.id || 1);
+      } catch (supaErr) {
+        console.warn('Supabase profile sync skipped:', supaErr.message);
+      }
+
+      toast.success('Profile updated successfully (using Cloudinary)!');
       fetchData();
       if (onProfileUpdate) onProfileUpdate();
     } catch (err) {
-      toast.error(err.message || 'Failed to update profile');
+      console.error(err);
+      toast.error(err.response?.data?.message || err.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }

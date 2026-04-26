@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { Camera, Mail, User, Briefcase, FileText, Globe, ShieldCheck, MessageSquare } from 'lucide-react';
@@ -23,16 +25,30 @@ const Profile = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
 
   const fetchProfile = async () => {
     try {
-      const { data } = await axios.get('profile');
+      const { data, error } = await supabase.from('profiles').select('*').single();
+      if (error) throw error;
       if (data) {
         setProfile({
           ...data,
-          socialLinks: data.socialLinks || { github: '', linkedin: '', whatsapp: '', email: '' }
+          profileImage: data.profile_image || data.profileImage,
+          resumeUrl: data.resume_url || data.resumeUrl,
+          socialLinks: data.social_links || data.socialLinks || { github: '', linkedin: '', whatsapp: '', email: '' }
         });
-        setPreviewImage(data.profileImage);
+        setPreviewImage(data.profile_image || data.profileImage);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Fetch error:', err);
+      // Fallback
+      try {
+        const { data } = await axios.get('profile');
+        if (data) {
+          setProfile({
+            ...data,
+            socialLinks: data.socialLinks || { github: '', linkedin: '', whatsapp: '', email: '' }
+          });
+          setPreviewImage(data.profileImage);
+        }
+      } catch (axErr) {}
     }
   };
 
@@ -51,24 +67,49 @@ const Profile = ({ isLoggedIn, setIsLoggedIn, onProfileUpdate }) => {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const formData = new FormData();
-    formData.append('name', profile.name);
-    formData.append('role', profile.role);
-    formData.append('intro', profile.intro);
-    formData.append('about', profile.about);
-    formData.append('socialLinks', JSON.stringify(profile.socialLinks));
-    if (profile.newImage) formData.append('profileImage', profile.newImage);
-    if (profile.newResume) formData.append('resume', profile.newResume);
-
     try {
+      const formData = new FormData();
+      formData.append('name', profile.name);
+      formData.append('role', profile.role);
+      formData.append('intro', profile.intro);
+      formData.append('about', profile.about);
+      formData.append('socialLinks', JSON.stringify(profile.socialLinks));
+
+      if (profile.newImage) {
+        formData.append('profileImage', profile.newImage);
+      }
+
+      if (profile.newResume) {
+        formData.append('resume', profile.newResume);
+      }
+
+      // Use the Node backend (already running on port 5010 via VITE_API_URL proxy)
       const { data } = await axios.post('profile', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setProfile(data);
+
+      // Optional: Sync with Supabase if the user still wants to use it for the database
+      try {
+        const updates = {
+          name: data.name,
+          role: data.role,
+          intro: data.intro,
+          about: data.about,
+          profile_image: data.profileImage,
+          resume_url: data.resumeUrl,
+          social_links: data.socialLinks
+        };
+        await supabase.from('profiles').update(updates).eq('id', profile.id || 1);
+      } catch (supaErr) {
+        console.warn('Supabase sync skipped:', supaErr.message);
+      }
+
+      toast.success('Profile updated successfully (using Cloudinary)!');
+      fetchProfile();
       if (onProfileUpdate) onProfileUpdate();
-      toast.success('Profile updated successfully!');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update profile');
+      console.error(err);
+      toast.error(err.response?.data?.message || err.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }

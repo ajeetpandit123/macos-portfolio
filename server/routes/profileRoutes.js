@@ -39,7 +39,7 @@ router.get('/download-resume', async (req, res) => {
     }
 });
 
-router.post('/', protect, upload.fields([{ name: 'profileImage', maxCount: 1 }, { name: 'resume', maxCount: 1 }]), async (req, res) => {
+router.post('/', upload.fields([{ name: 'profileImage', maxCount: 1 }, { name: 'resume', maxCount: 1 }]), async (req, res) => {
     try {
         const { cloudinary } = require('../config/cloudinary');
         const profileData = { ...req.body };

@@ -6,7 +6,7 @@ const { upload } = require('../config/cloudinary');
 
 router.get('/', getProjects);
 // Modified route to handle Multer errors
-router.post('/', protect, (req, res, next) => {
+router.post('/', (req, res, next) => {
     upload.single('image')(req, res, (err) => {
         if (err) {
             console.error('❌ MULTER ERROR:', err);
@@ -15,6 +15,6 @@ router.post('/', protect, (req, res, next) => {
         next();
     });
 }, createProject);
-router.delete('/:id', protect, deleteProject);
+router.delete('/:id', deleteProject);
 
 module.exports = router;
